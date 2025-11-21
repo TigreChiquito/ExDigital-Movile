@@ -42,6 +42,9 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -80,6 +83,12 @@ fun HomeScreen(
     val currentUser by authViewModel.currentUser.collectAsState()
     val cart by cartViewModel.cart.collectAsState()
     val products by productViewModel.products.collectAsState()
+
+    var selectedCategory by remember { mutableStateOf<ProductCategory?>(null) }
+
+    val filteredProducts = selectedCategory?.let { category ->
+        products.filter { it.category == category }
+    } ?: products
 
     Scaffold(
         topBar = {
@@ -150,6 +159,14 @@ fun HomeScreen(
                             tint = TextPrimary
                         )
                     }
+
+                    IconButton(onClick = { navController.navigate(Screen.Orders.route) }) {
+                        Icon(
+                            imageVector = Icons.Default.Star,
+                            contentDescription = "Órdenes",
+                            tint = PrimaryOrange
+                        )
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = BackgroundDarkest
@@ -183,7 +200,12 @@ fun HomeScreen(
             }
 
             item {
-                CategoriesRow()
+                CategoriesRow(
+                    selectedCategory = selectedCategory,
+                    onCategorySelected = { category ->
+                        selectedCategory = if (selectedCategory == category) null else category
+                    }
+                )
                 Spacer(modifier = Modifier.height(24.dp))
             }
 
@@ -199,7 +221,7 @@ fun HomeScreen(
                 Spacer(modifier = Modifier.height(12.dp))
             }
 
-            items(products) { product ->  // ✅ ESTO ES LO NUEVO
+            items(filteredProducts) { product ->  // ✅ ESTO ES LO NUEVO
                 ProductCard(
                     product = product,
                     onClick = {
@@ -262,7 +284,10 @@ fun PromotionalBanner() {
 }
 
 @Composable
-fun CategoriesRow() {
+fun CategoriesRow(
+    selectedCategory: ProductCategory? = null,
+    onCategorySelected: (ProductCategory) -> Unit
+) {
     val categories = ProductCategory.values()
 
     LazyRow(
@@ -270,24 +295,32 @@ fun CategoriesRow() {
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         items(categories.toList()) { category ->
-            CategoryChip(category = category)
+            CategoryChip(
+                category = category,
+                selected = category == selectedCategory,
+                onClick = { onCategorySelected(category) }
+            )
         }
     }
 }
 
 @Composable
-fun CategoryChip(category: ProductCategory) {
+fun CategoryChip(
+    category: ProductCategory,
+    selected: Boolean = false,
+    onClick: () -> Unit
+) {
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(16.dp))
-            .background(BackgroundMedium)
+            .background(if (selected) PrimaryOrange else BackgroundMedium)
             .border(2.dp, BackgroundLight, RoundedCornerShape(16.dp))
-            .clickable { /* TODO: Filtrar por categoría */ }
+            .clickable(onClick = onClick)
             .padding(horizontal = 20.dp, vertical = 12.dp)
     ) {
         Text(
             text = category.displayName(),
-            color = TextPrimary,
+            color = if (selected) TextPrimary else TextPrimary,
             fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold
         )

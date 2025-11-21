@@ -26,6 +26,20 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     private val _isAdmin = MutableStateFlow(false)
     val isAdmin: StateFlow<Boolean> = _isAdmin.asStateFlow()
 
+    // Validaciones básicas educativas
+    private fun isValidEmail(email: String): Boolean {
+        val allowedDomains = listOf("@duoc.cl", "@duocuc.cl", "@gmail.com")
+        return email.contains("@") && allowedDomains.any { email.endsWith(it) }
+    }
+
+    private fun isValidPassword(password: String): Boolean {
+        if (password.length !in 5..9) return false
+        if (!password.any { it.isUpperCase() }) return false
+        return true
+    }
+
+    // En esta versión educativa NO persistimos lista de usuarios; solo el usuario actual en DataStore.
+
     init {
         loadUser()
     }
@@ -46,7 +60,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun login(email: String, password: String): Boolean {
-        // Primero verificar si es administrador
+        // Admin
         val adminUser = UserRepository.isAdminUser(email, password)
         if (adminUser != null) {
             viewModelScope.launch {
@@ -55,40 +69,43 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
             return true
         }
 
-        // Si no es admin, login normal de cliente
-        if (email.isNotEmpty() && password.isNotEmpty()) {
-            val user = User(
-                id = UUID.randomUUID().toString(),
-                email = email,
-                name = email.substringBefore("@"),
-                role = UserRole.CUSTOMER
-            )
-
-            viewModelScope.launch {
-                dataStoreManager.saveUser(user)
-            }
-            return true
+        // Validaciones de formato
+        if (!isValidEmail(email) || !isValidPassword(password)) {
+            return false
         }
-        return false
+
+        // Como no tenemos BD de usuarios aún, aceptamos login educativo:
+        val user = User(
+            id = UUID.randomUUID().toString(),
+            email = email,
+            name = email.substringBefore("@"),
+            role = UserRole.CUSTOMER
+        )
+        viewModelScope.launch {
+            dataStoreManager.saveUser(user)
+        }
+        return true
     }
 
     fun register(email: String, password: String, name: String, phone: String): Boolean {
-        // Registro siempre crea usuarios tipo CUSTOMER
-        if (email.isNotEmpty() && password.isNotEmpty() && name.isNotEmpty()) {
-            val user = User(
-                id = UUID.randomUUID().toString(),
-                email = email,
-                name = name,
-                phone = phone,
-                role = UserRole.CUSTOMER
-            )
+        // Validaciones de campos
+        if (email.isBlank() || password.isBlank() || name.isBlank()) return false
+        if (!isValidEmail(email) || !isValidPassword(password)) return false
 
-            viewModelScope.launch {
-                dataStoreManager.saveUser(user)
-            }
-            return true
+        // En una app real aquí comprobaríamos si el usuario ya existe en BD.
+
+        val user = User(
+            id = UUID.randomUUID().toString(),
+            email = email,
+            name = name,
+            phone = phone,
+            role = UserRole.CUSTOMER
+        )
+
+        viewModelScope.launch {
+            dataStoreManager.saveUser(user)
         }
-        return false
+        return true
     }
 
     fun logout() {

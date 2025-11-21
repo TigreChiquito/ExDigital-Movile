@@ -20,7 +20,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Card
@@ -30,10 +30,13 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -59,17 +62,27 @@ import com.exdigital.app.ui.theme.TealAccent
 import com.exdigital.app.ui.theme.TextPrimary
 import com.exdigital.app.ui.theme.TextSecondary
 import com.exdigital.app.ui.theme.TextTertiary
+import com.exdigital.app.ui.viewmodels.OrdersViewModel
 import com.exdigital.app.ui.viewmodels.ProductViewModel
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminScreen(
     navController: NavController,
-    productViewModel: ProductViewModel = viewModel()
+    productViewModel: ProductViewModel = viewModel(),
+    ordersViewModel: OrdersViewModel = viewModel()
 ) {
     val products by productViewModel.products.collectAsState()
+    val orders by ordersViewModel.orders.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
     var selectedProduct by remember { mutableStateOf<Product?>(null) }
+    var selectedTab by remember { mutableStateOf(0) }
+
+    // Cargar órdenes para admin
+    LaunchedEffect(Unit) {
+        ordersViewModel.loadAllOrders()
+    }
 
     Scaffold(
         topBar = {
@@ -91,7 +104,7 @@ fun AdminScreen(
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {
                         Icon(
-                            imageVector = Icons.Default.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Volver",
                             tint = TextPrimary
                         )
@@ -104,46 +117,82 @@ fun AdminScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = { showAddDialog = true },
-                containerColor = PrimaryOrange,
-                contentColor = TextPrimary
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Agregar producto"
-                )
+            if (selectedTab == 0) {
+                FloatingActionButton(
+                    onClick = { showAddDialog = true },
+                    containerColor = PrimaryOrange,
+                    contentColor = TextPrimary
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Agregar producto"
+                    )
+                }
             }
         },
         containerColor = BackgroundDarkest
     ) { paddingValues ->
-        LazyColumn(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(paddingValues)
         ) {
-            item {
-                AdminStatsCard(
-                    totalProducts = products.size,
-                    totalStock = products.sumOf { it.stock },
-                    lowStockCount = products.count { it.stock < 5 }
+            TabRow(
+                selectedTabIndex = selectedTab,
+                containerColor = BackgroundDarkest
+            ) {
+                Tab(
+                    selected = selectedTab == 0,
+                    onClick = { selectedTab = 0 },
+                    text = { Text("Productos") }
                 )
-                Spacer(modifier = Modifier.height(4.dp))
+                Tab(
+                    selected = selectedTab == 1,
+                    onClick = { selectedTab = 1 },
+                    text = { Text("Órdenes") }
+                )
             }
 
-            items(products, key = { it.id }) { product ->
-                AdminProductCard(
-                    product = product,
-                    onEdit = {
-                        selectedProduct = product
-                        showAddDialog = true
-                    },
-                    onDelete = {
-                        productViewModel.deleteProduct(product.id)
+            if (selectedTab == 0) {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    item {
+                        AdminStatsCard(
+                            totalProducts = products.size,
+                            totalStock = products.sumOf { it.stock },
+                            lowStockCount = products.count { it.stock < 5 }
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
                     }
-                )
+
+                    items(products, key = { it.id }) { product ->
+                        AdminProductCard(
+                            product = product,
+                            onEdit = {
+                                selectedProduct = product
+                                showAddDialog = true
+                            },
+                            onDelete = {
+                                productViewModel.deleteProduct(product.id)
+                            }
+                        )
+                    }
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(orders, key = { it.id }) { order ->
+                        OrderCard(order = order, isAdmin = true, onClick = { /* sin acción, solo vista resumen en admin */ })
+                    }
+                }
             }
         }
     }
@@ -275,7 +324,7 @@ fun AdminProductCard(
 
                     Column(horizontalAlignment = Alignment.End) {
                         Text(
-                            text = "$${String.format("%.2f", product.price)}",
+                            text = "$${String.format(Locale.getDefault(), "%.2f", product.price)}",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
                             color = PrimaryOrange
@@ -419,7 +468,7 @@ fun AddEditProductDialog(
                             )
                         ) {
                             Column {
-                                ProductCategory.values().forEach { category ->
+                                ProductCategory.entries.forEach { category ->
                                     Text(
                                         text = category.displayName(),
                                         modifier = Modifier

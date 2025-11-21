@@ -1,40 +1,59 @@
 package com.exdigital.app.ui.viewmodels
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.exdigital.app.data.local.AppDatabase
+import com.exdigital.app.data.repository.ProductRepository
 import com.exdigital.app.models.Product
 import com.exdigital.app.models.ProductCategory
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import java.util.UUID
 
-class ProductViewModel : ViewModel() {
+class ProductViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val repository: ProductRepository
 
     // Lista mutable de productos (empezamos con MockData)
-    private val _products = MutableStateFlow<List<Product>>(
-        com.exdigital.app.data.MockData.products.toMutableList()
-    )
+    private val _products = MutableStateFlow<List<Product>>(emptyList())
     val products: StateFlow<List<Product>> = _products.asStateFlow()
 
+    init {
+        val db = AppDatabase.getInstance(application)
+        val dao = db.productDao()
+        repository = ProductRepository(dao)
+
+        viewModelScope.launch {
+            repository.populateIfEmpty()
+        }
+
+        viewModelScope.launch {
+            repository.products.collect { list ->
+                _products.value = list
+            }
+        }
+    }
+
     fun addProduct(product: Product) {
-        val currentList = _products.value.toMutableList()
-        currentList.add(product)
-        _products.value = currentList
+        viewModelScope.launch {
+            repository.addProduct(product)
+        }
     }
 
     fun updateProduct(product: Product) {
-        val currentList = _products.value.toMutableList()
-        val index = currentList.indexOfFirst { it.id == product.id }
-        if (index != -1) {
-            currentList[index] = product
-            _products.value = currentList
+        viewModelScope.launch {
+            repository.addProduct(product)
         }
     }
 
     fun deleteProduct(productId: String) {
-        val currentList = _products.value.toMutableList()
-        currentList.removeAll { it.id == productId }
-        _products.value = currentList
+        viewModelScope.launch {
+            repository.deleteProduct(productId)
+        }
     }
 
     fun getProductById(id: String): Product? {

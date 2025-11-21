@@ -57,16 +57,24 @@ import com.exdigital.app.ui.theme.TealAccent
 import com.exdigital.app.ui.theme.TextPrimary
 import com.exdigital.app.ui.theme.TextSecondary
 import com.exdigital.app.ui.theme.TextTertiary
+import com.exdigital.app.ui.viewmodels.AuthViewModel
 import com.exdigital.app.ui.viewmodels.CartViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CartScreen(
     navController: NavController,
-    cartViewModel: CartViewModel = viewModel()
+    cartViewModel: CartViewModel = viewModel(),
+    authViewModel: AuthViewModel = viewModel()
 ) {
     val cart by cartViewModel.cart.collectAsState()
     val cartItems by cartViewModel.cartItems.collectAsState()
+    val currentUser by authViewModel.currentUser.collectAsState()
+
+    // Sincronizar userId con el carrito
+    currentUser?.id?.let { userId ->
+        cartViewModel.setUserId(userId)
+    }
 
     Scaffold(
         topBar = {
@@ -183,8 +191,8 @@ fun CartScreen(
                     shipping = 0.0,
                     total = cart.total,
                     onCheckout = {
-                        // TODO: Implementar checkout
-                        cartViewModel.clearCart()
+                        cartViewModel.checkout()
+                        navController.navigateUp()
                     },
                     onClearCart = {
                         cartViewModel.clearCart()

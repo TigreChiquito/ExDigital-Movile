@@ -60,6 +60,7 @@ fun LoginScreen(
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
+    var successMessage by remember { mutableStateOf("") }
 
     Box(
         modifier = Modifier
@@ -169,23 +170,23 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Forgot Password
-            Text(
-                text = "¿Olvidaste tu contraseña?",
-                fontSize = 14.sp,
-                color = TealAccent,
-                modifier = Modifier
-                    .align(Alignment.End)
-                    .clickable { /* TODO: Implementar recuperación */ }
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
             // Error Message
             if (errorMessage.isNotEmpty()) {
                 Text(
                     text = errorMessage,
                     color = MaterialTheme.colorScheme.error,
+                    fontSize = 14.sp,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            // Success Message
+            if (successMessage.isNotEmpty()) {
+                Text(
+                    text = successMessage,
+                    color = PrimaryOrange,
                     fontSize = 14.sp,
                     modifier = Modifier.fillMaxWidth(),
                     textAlign = TextAlign.Center
@@ -199,16 +200,19 @@ fun LoginScreen(
             ExDigitalButton(
                 text = "Iniciar Sesión",
                 onClick = {
+                    errorMessage = ""
+                    successMessage = ""
                     if (email.isEmpty() || password.isEmpty()) {
                         errorMessage = "Por favor completa todos los campos"
                     } else {
                         val success = authViewModel.login(email, password)
                         if (success) {
+                            successMessage = "Sesión iniciada correctamente"
                             navController.navigate(Screen.Home.route) {
                                 popUpTo(Screen.Login.route) { inclusive = true }
                             }
                         } else {
-                            errorMessage = "Credenciales inválidas"
+                            errorMessage = "Correo o contraseña inválidos o usuario no registrado"
                         }
                     }
                 },

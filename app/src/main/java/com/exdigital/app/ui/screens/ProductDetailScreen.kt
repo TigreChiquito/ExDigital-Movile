@@ -29,6 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -46,6 +47,7 @@ import com.exdigital.app.data.MockData
 import com.exdigital.app.models.Product
 import com.exdigital.app.models.displayName
 import com.exdigital.app.ui.components.ExDigitalButton
+import com.exdigital.app.ui.navigation.Screen
 import com.exdigital.app.ui.theme.BackgroundDark
 import com.exdigital.app.ui.theme.BackgroundDarkest
 import com.exdigital.app.ui.theme.BackgroundLight
@@ -56,6 +58,7 @@ import com.exdigital.app.ui.theme.TealAccent
 import com.exdigital.app.ui.theme.TextPrimary
 import com.exdigital.app.ui.theme.TextSecondary
 import com.exdigital.app.ui.theme.TextTertiary
+import com.exdigital.app.ui.viewmodels.AuthViewModel
 import com.exdigital.app.ui.viewmodels.CartViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -63,10 +66,13 @@ import com.exdigital.app.ui.viewmodels.CartViewModel
 fun ProductDetailScreen(
     navController: NavController,
     productId: String?,
-    cartViewModel: CartViewModel = viewModel()
+    cartViewModel: CartViewModel = viewModel(),
+    authViewModel: AuthViewModel = viewModel()
 ) {
     val product = MockData.getProductById(productId ?: "")
     var quantity by remember { mutableIntStateOf(1) }
+
+    val currentUser by authViewModel.currentUser.collectAsState()
 
     if (product == null) {
         Box(
@@ -340,10 +346,16 @@ fun ProductDetailScreen(
 
                 // Add to Cart Button
                 ExDigitalButton(
-                    text = "Agregar al Carrito",
+                    text = "Agregar al carrito",
                     onClick = {
-                        cartViewModel.addToCart(product, quantity)
-                        navController.navigateUp()
+                        if (currentUser == null) {
+                            navController.navigate(Screen.Login.route)
+                        } else {
+                            repeat(quantity) {
+                                cartViewModel.addToCart(product)
+                            }
+                            navController.navigate(Screen.Cart.route)
+                        }
                     },
                     modifier = Modifier.fillMaxWidth()
                 )

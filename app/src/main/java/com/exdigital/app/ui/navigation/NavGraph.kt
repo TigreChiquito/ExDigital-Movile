@@ -13,6 +13,7 @@ import com.exdigital.app.ui.screens.ProductDetailScreen
 import com.exdigital.app.ui.screens.RegisterScreen
 import com.exdigital.app.ui.screens.SplashScreen
 import com.exdigital.app.ui.screens.AdminScreen
+import com.exdigital.app.ui.screens.OrdersScreen
 
 sealed class Screen(val route: String) {
     object Splash : Screen("splash")
@@ -25,6 +26,7 @@ sealed class Screen(val route: String) {
     object Cart : Screen("cart")
     object Profile : Screen("profile")
     object Admin : Screen("admin")  // ⭐ NUEVA
+    object Orders : Screen("orders") // Pantalla de órdenes
 }
 
 @Composable
@@ -71,6 +73,10 @@ fun NavGraph(
 
         composable(Screen.Admin.route) {
             AdminScreen(navController)
+        }
+
+        composable(Screen.Orders.route) {
+            OrdersScreen(navController = navController)
         }
     }
 }

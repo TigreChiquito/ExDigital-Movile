@@ -67,6 +67,7 @@ fun RegisterScreen(
     var passwordVisible by remember { mutableStateOf(false) }
     var confirmPasswordVisible by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
+    var successMessage by remember { mutableStateOf("") }
 
     Box(
         modifier = Modifier
@@ -116,6 +117,7 @@ fun RegisterScreen(
                 onValueChange = {
                     name = it
                     errorMessage = ""
+                    successMessage = ""
                 },
                 label = "Nombre completo",
                 placeholder = "Juan Pérez",
@@ -137,6 +139,7 @@ fun RegisterScreen(
                 onValueChange = {
                     email = it
                     errorMessage = ""
+                    successMessage = ""
                 },
                 label = "Correo electrónico",
                 placeholder = "ejemplo@correo.com",
@@ -158,6 +161,7 @@ fun RegisterScreen(
                 onValueChange = {
                     phone = it
                     errorMessage = ""
+                    successMessage = ""
                 },
                 label = "Teléfono",
                 placeholder = "+56 9 1234 5678",
@@ -179,6 +183,7 @@ fun RegisterScreen(
                 onValueChange = {
                     password = it
                     errorMessage = ""
+                    successMessage = ""
                 },
                 label = "Contraseña",
                 placeholder = "••••••••",
@@ -219,6 +224,7 @@ fun RegisterScreen(
                 onValueChange = {
                     confirmPassword = it
                     errorMessage = ""
+                    successMessage = ""
                 },
                 label = "Confirmar contraseña",
                 placeholder = "••••••••",
@@ -265,60 +271,44 @@ fun RegisterScreen(
                 Spacer(modifier = Modifier.height(8.dp))
             }
 
+            // Success Message
+            if (successMessage.isNotEmpty()) {
+                Text(
+                    text = successMessage,
+                    color = PrimaryOrange,
+                    fontSize = 14.sp,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
             Spacer(modifier = Modifier.height(24.dp))
 
             // Register Button
             ExDigitalButton(
-                text = "Registrarse",
+                text = "Crear cuenta",
                 onClick = {
-                    when {
-                        name.isEmpty() || email.isEmpty() || password.isEmpty() -> {
-                            errorMessage = "Por favor completa todos los campos obligatorios"
-                        }
-                        password != confirmPassword -> {
-                            errorMessage = "Las contraseñas no coinciden"
-                        }
-                        password.length < 6 -> {
-                            errorMessage = "La contraseña debe tener al menos 6 caracteres"
-                        }
-                        else -> {
-                            val success = authViewModel.register(email, password, name, phone)
-                            if (success) {
-                                navController.navigate(Screen.Home.route) {
-                                    popUpTo(Screen.Register.route) { inclusive = true }
-                                }
-                            } else {
-                                errorMessage = "Error al registrar usuario"
+                    errorMessage = ""
+                    successMessage = ""
+                    if (name.isBlank() || email.isBlank() || phone.isBlank() || password.isBlank() || confirmPassword.isBlank()) {
+                        errorMessage = "Por favor completa todos los campos"
+                    } else if (password != confirmPassword) {
+                        errorMessage = "Las contraseñas no coinciden"
+                    } else {
+                        val success = authViewModel.register(email, password, name, phone)
+                        if (success) {
+                            successMessage = "Cuenta creada correctamente"
+                            navController.navigate(Screen.Login.route) {
+                                popUpTo(Screen.Register.route) { inclusive = true }
                             }
+                        } else {
+                            errorMessage = "Datos inválidos o usuario ya registrado"
                         }
                     }
                 },
                 modifier = Modifier.fillMaxWidth()
             )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Login Link
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Text(
-                    text = "¿Ya tienes cuenta? ",
-                    fontSize = 14.sp,
-                    color = TextTertiary
-                )
-
-                Text(
-                    text = "Inicia sesión",
-                    fontSize = 14.sp,
-                    color = TealAccent,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.clickable {
-                        navController.navigateUp()
-                    }
-                )
-            }
         }
     }
 }
