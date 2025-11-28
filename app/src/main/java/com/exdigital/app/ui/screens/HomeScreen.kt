@@ -1,8 +1,5 @@
 package com.exdigital.app.ui.screens
 
-import androidx.compose.material.icons.filled.Settings
-import com.exdigital.app.ui.viewmodels.ProductViewModel
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -24,7 +21,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Badge
@@ -34,7 +31,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -49,35 +45,35 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.exdigital.app.data.MockData
+import coil.compose.AsyncImage
 import com.exdigital.app.models.Product
 import com.exdigital.app.models.ProductCategory
 import com.exdigital.app.models.displayName
 import com.exdigital.app.ui.navigation.Screen
-import com.exdigital.app.ui.theme.BackgroundDark
 import com.exdigital.app.ui.theme.BackgroundDarkest
 import com.exdigital.app.ui.theme.BackgroundLight
 import com.exdigital.app.ui.theme.BackgroundMedium
 import com.exdigital.app.ui.theme.PrimaryOrange
 import com.exdigital.app.ui.theme.TealAccent
 import com.exdigital.app.ui.theme.TextPrimary
-import com.exdigital.app.ui.theme.TextSecondary
 import com.exdigital.app.ui.theme.TextTertiary
 import com.exdigital.app.ui.viewmodels.AuthViewModel
 import com.exdigital.app.ui.viewmodels.CartViewModel
+import com.exdigital.app.ui.viewmodels.ProductViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     navController: NavController,
     authViewModel: AuthViewModel = viewModel(),
-    cartViewModel: CartViewModel = viewModel(),
+    cartViewModel: CartViewModel, // ✅ Parámetro obligatorio (sin default)
     productViewModel: ProductViewModel = viewModel()
 ) {
     val currentUser by authViewModel.currentUser.collectAsState()
@@ -121,13 +117,6 @@ fun HomeScreen(
                         }
                     }
 
-                    IconButton(onClick = { /* TODO: Búsqueda */ }) {
-                        Icon(
-                            imageVector = Icons.Default.Search,
-                            contentDescription = "Buscar",
-                            tint = TextPrimary
-                        )
-                    }
 
                     BadgedBox(
                         badge = {
@@ -349,19 +338,16 @@ fun ProductCard(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            // Image placeholder
-            Box(
+            // Imagen del producto
+            AsyncImage(
+                model = product.imageUrl,
+                contentDescription = product.name,
                 modifier = Modifier
                     .size(100.dp)
                     .clip(RoundedCornerShape(16.dp))
                     .background(BackgroundLight),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "📦",
-                    fontSize = 40.sp
-                )
-            }
+                contentScale = ContentScale.Crop
+            )
 
             Spacer(modifier = Modifier.width(16.dp))
 

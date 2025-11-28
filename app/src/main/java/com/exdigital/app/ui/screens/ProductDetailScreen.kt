@@ -38,11 +38,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
 import com.exdigital.app.data.MockData
 import com.exdigital.app.models.Product
 import com.exdigital.app.models.displayName
@@ -66,7 +68,7 @@ import com.exdigital.app.ui.viewmodels.CartViewModel
 fun ProductDetailScreen(
     navController: NavController,
     productId: String?,
-    cartViewModel: CartViewModel = viewModel(),
+    cartViewModel: CartViewModel, // ✅ Parámetro obligatorio
     authViewModel: AuthViewModel = viewModel()
 ) {
     val product = MockData.getProductById(productId ?: "")
@@ -118,18 +120,15 @@ fun ProductDetailScreen(
                 .verticalScroll(rememberScrollState())
         ) {
             // Product Image
-            Box(
+            AsyncImage(
+                model = product.imageUrl,
+                contentDescription = product.name,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(300.dp)
                     .background(BackgroundMedium),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "📦",
-                    fontSize = 120.sp
-                )
-            }
+                contentScale = ContentScale.Crop
+            )
 
             Column(
                 modifier = Modifier.padding(20.dp)

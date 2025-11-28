@@ -1,6 +1,7 @@
 package com.exdigital.app.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -14,6 +15,9 @@ import com.exdigital.app.ui.screens.RegisterScreen
 import com.exdigital.app.ui.screens.SplashScreen
 import com.exdigital.app.ui.screens.AdminScreen
 import com.exdigital.app.ui.screens.OrdersScreen
+import com.exdigital.app.ui.screens.ProfileScreen
+import com.exdigital.app.ui.viewmodels.CartViewModel
+import com.exdigital.app.ui.viewmodels.OrdersViewModel
 
 sealed class Screen(val route: String) {
     object Splash : Screen("splash")
@@ -34,6 +38,12 @@ fun NavGraph(
     navController: NavHostController,
     startDestination: String = Screen.Splash.route
 ) {
+    // ✅ Crear UNA SOLA instancia compartida de CartViewModel para toda la app
+    val sharedCartViewModel: CartViewModel = viewModel()
+
+    // ✅ Crear UNA SOLA instancia compartida de OrdersViewModel para toda la app
+    val sharedOrdersViewModel: OrdersViewModel = viewModel()
+
     NavHost(
         navController = navController,
         startDestination = startDestination
@@ -51,7 +61,7 @@ fun NavGraph(
         }
 
         composable(Screen.Home.route) {
-            HomeScreen(navController)
+            HomeScreen(navController, cartViewModel = sharedCartViewModel)
         }
 
         composable(
@@ -59,16 +69,19 @@ fun NavGraph(
             arguments = listOf(navArgument("productId") { type = NavType.StringType })
         ) { backStackEntry ->
             val productId = backStackEntry.arguments?.getString("productId")
-            ProductDetailScreen(navController, productId)
+            ProductDetailScreen(navController, productId, cartViewModel = sharedCartViewModel)
         }
 
         composable(Screen.Cart.route) {
-            CartScreen(navController)
+            CartScreen(
+                navController,
+                cartViewModel = sharedCartViewModel,
+                ordersViewModel = sharedOrdersViewModel
+            )
         }
 
         composable(Screen.Profile.route) {
-            // ProfileScreen(navController)
-            // TODO: Crear esta pantalla después
+            ProfileScreen(navController)
         }
 
         composable(Screen.Admin.route) {
@@ -76,7 +89,10 @@ fun NavGraph(
         }
 
         composable(Screen.Orders.route) {
-            OrdersScreen(navController = navController)
+            OrdersScreen(
+                navController = navController,
+                ordersViewModel = sharedOrdersViewModel
+            )
         }
     }
 }

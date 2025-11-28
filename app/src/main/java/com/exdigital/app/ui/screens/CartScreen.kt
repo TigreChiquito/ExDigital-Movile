@@ -46,6 +46,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.exdigital.app.models.CartItem
 import com.exdigital.app.ui.components.ExDigitalButton
+import com.exdigital.app.ui.navigation.Screen
 import com.exdigital.app.ui.theme.BackgroundDark
 import com.exdigital.app.ui.theme.BackgroundDarkest
 import com.exdigital.app.ui.theme.BackgroundLight
@@ -59,22 +60,20 @@ import com.exdigital.app.ui.theme.TextSecondary
 import com.exdigital.app.ui.theme.TextTertiary
 import com.exdigital.app.ui.viewmodels.AuthViewModel
 import com.exdigital.app.ui.viewmodels.CartViewModel
+import com.exdigital.app.ui.viewmodels.OrdersViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CartScreen(
     navController: NavController,
-    cartViewModel: CartViewModel = viewModel(),
+    cartViewModel: CartViewModel, // ✅ Parámetro obligatorio
+    ordersViewModel: OrdersViewModel, // ✅ Parámetro obligatorio
     authViewModel: AuthViewModel = viewModel()
 ) {
     val cart by cartViewModel.cart.collectAsState()
     val cartItems by cartViewModel.cartItems.collectAsState()
     val currentUser by authViewModel.currentUser.collectAsState()
 
-    // Sincronizar userId con el carrito
-    currentUser?.id?.let { userId ->
-        cartViewModel.setUserId(userId)
-    }
 
     Scaffold(
         topBar = {
@@ -191,8 +190,12 @@ fun CartScreen(
                     shipping = 0.0,
                     total = cart.total,
                     onCheckout = {
-                        cartViewModel.checkout()
-                        navController.navigateUp()
+                        currentUser?.id?.let { userId ->
+                            cartViewModel.checkout(userId, ordersViewModel)
+                            navController.navigate(Screen.Orders.route) {
+                                popUpTo(Screen.Home.route)
+                            }
+                        }
                     },
                     onClearCart = {
                         cartViewModel.clearCart()

@@ -1,79 +1,87 @@
 package com.exdigital.app.ui.viewmodels
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.viewModelScope
-import com.exdigital.app.data.local.AppDatabase
-import com.exdigital.app.data.repository.PurchaseRepository
+import android.util.Log
+import androidx.lifecycle.ViewModel
 import com.exdigital.app.models.Cart
 import com.exdigital.app.models.CartItem
 import com.exdigital.app.models.Product
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 
-class CartViewModel(application: Application) : AndroidViewModel(application) {
+class CartViewModel : ViewModel() {
 
-    private val purchaseRepository: PurchaseRepository
-
+    // Versión simplificada en memoria para desarrollo educativo
     private val _cartItems = MutableStateFlow<List<CartItem>>(emptyList())
     val cartItems: StateFlow<List<CartItem>> = _cartItems.asStateFlow()
 
     private val _cart = MutableStateFlow(Cart())
     val cart: StateFlow<Cart> = _cart.asStateFlow()
 
-    // Por simplicidad, guardamos el userId actual aquí.
-    private val _userId = MutableStateFlow<String?>(null)
-
-    init {
-        val db = AppDatabase.getInstance(application)
-        purchaseRepository = PurchaseRepository(db.purchaseDao(), db.productDao())
-    }
-
-    fun setUserId(userId: String) {
-        _userId.value = userId
-        viewModelScope.launch {
-            purchaseRepository.getCartItems(userId).collect { items ->
-                _cartItems.value = items
-                _cart.value = Cart(items)
-            }
-        }
-    }
-
     fun addToCart(product: Product, quantity: Int = 1) {
-        val userId = _userId.value ?: return
-        viewModelScope.launch {
-            purchaseRepository.addOrUpdateCartItem(userId, product, quantity)
+        Log.d("CartViewModel", "🛒 addToCart llamado: ${product.name}, cantidad: $quantity")
+
+        val currentItems = _cartItems.value.toMutableList()
+        val existingItem = currentItems.find { it.product.id == product.id }
+
+        if (existingItem != null) {
+            // Actualizar cantidad
+            val updatedItem = existingItem.copy(quantity = existingItem.quantity + quantity)
+            currentItems[currentItems.indexOf(existingItem)] = updatedItem
+            Log.d("CartViewModel", "✅ Producto actualizado: ${product.name}, nueva cantidad: ${updatedItem.quantity}")
+        } else {
+            // Agregar nuevo item
+            currentItems.add(CartItem(product, quantity))
+            Log.d("CartViewModel", "✅ Producto agregado: ${product.name}, cantidad: $quantity")
         }
+
+        _cartItems.value = currentItems
+        _cart.value = Cart(currentItems)
+
+        Log.d("CartViewModel", "📊 Total items en carrito: ${_cart.value.itemCount}")
+        Log.d("CartViewModel", "💰 Total carrito: $${_cart.value.total}")
     }
 
     fun removeFromCart(productId: String) {
-        val userId = _userId.value ?: return
-        viewModelScope.launch {
-            purchaseRepository.removeFromCart(userId, productId)
-        }
+        val currentItems = _cartItems.value.toMutableList()
+        currentItems.removeAll { it.product.id == productId }
+        _cartItems.value = currentItems
+        _cart.value = Cart(currentItems)
     }
 
     fun updateQuantity(productId: String, newQuantity: Int) {
-        val userId = _userId.value ?: return
-        val currentItem = _cartItems.value.find { it.product.id == productId } ?: return
-        viewModelScope.launch {
-            purchaseRepository.addOrUpdateCartItem(userId, currentItem.product, newQuantity)
+        if (newQuantity <= 0) {
+            removeFromCart(productId)
+            return
+        }
+
+        val currentItems = _cartItems.value.toMutableList()
+        val itemIndex = currentItems.indexOfFirst { it.product.id == productId }
+
+        if (itemIndex != -1) {
+            currentItems[itemIndex] = currentItems[itemIndex].copy(quantity = newQuantity)
+            _cartItems.value = currentItems
+            _cart.value = Cart(currentItems)
         }
     }
 
     fun clearCart() {
-        val userId = _userId.value ?: return
-        viewModelScope.launch {
-            purchaseRepository.clearCart(userId)
-        }
+        Log.d("CartViewModel", "🗑️ Carrito limpiado")
+        _cartItems.value = emptyList()
+        _cart.value = Cart()
     }
 
-    fun checkout() {
-        val userId = _userId.value ?: return
-        viewModelScope.launch {
-            purchaseRepository.checkout(userId)
+    fun checkout(userId: String, ordersViewModel: OrdersViewModel) {
+        val items = _cartItems.value
+        val total = _cart.value.total
+
+        if (items.isEmpty()) {
+            Log.d("CartViewModel", "⚠️ Checkout cancelado: carrito vacío")
+            return
         }
+
+        Log.d("CartViewModel", "✅ Checkout exitoso: ${items.size} items, total: $$total")
+        ordersViewModel.addOrder(userId, items, total)
+        clearCart()
     }
 }

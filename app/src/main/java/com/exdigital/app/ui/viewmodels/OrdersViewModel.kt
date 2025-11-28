@@ -1,65 +1,56 @@
 package com.exdigital.app.ui.viewmodels
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.viewModelScope
-import com.exdigital.app.data.local.AppDatabase
-import com.exdigital.app.data.local.entities.OrderEntity
-import com.exdigital.app.data.local.entities.OrderItemEntity
-import com.exdigital.app.data.repository.PurchaseRepository
+import androidx.lifecycle.ViewModel
 import com.exdigital.app.models.CartItem
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 
-class OrdersViewModel(application: Application) : AndroidViewModel(application) {
+data class Order(
+    val id: Long,
+    val userId: String,
+    val items: List<CartItem>,
+    val total: Double,
+    val timestamp: Long,
+    val status: String = "PAGADO"
+)
 
-    private val repository: PurchaseRepository
+class OrdersViewModel : ViewModel() {
 
-    private val _orders = MutableStateFlow<List<OrderEntity>>(emptyList())
-    val orders: StateFlow<List<OrderEntity>> = _orders.asStateFlow()
+    // Versión simplificada en memoria para desarrollo educativo
+    private val _allOrders = MutableStateFlow<List<Order>>(emptyList())
 
-    private val _selectedOrderItems = MutableStateFlow<List<OrderItemEntity>>(emptyList())
-    val selectedOrderItems: StateFlow<List<OrderItemEntity>> = _selectedOrderItems.asStateFlow()
+    private val _orders = MutableStateFlow<List<Order>>(emptyList())
+    val orders: StateFlow<List<Order>> = _orders.asStateFlow()
 
-    private val _selectedOrder = MutableStateFlow<Pair<OrderEntity, List<CartItem>>?>(null)
-    val selectedOrder: StateFlow<Pair<OrderEntity, List<CartItem>>?> = _selectedOrder.asStateFlow()
+    private val _selectedOrder = MutableStateFlow<Order?>(null)
+    val selectedOrder: StateFlow<Order?> = _selectedOrder.asStateFlow()
 
-    init {
-        val db = AppDatabase.getInstance(application)
-        repository = PurchaseRepository(db.purchaseDao(), db.productDao())
+    fun addOrder(userId: String, items: List<CartItem>, total: Double) {
+        val newOrder = Order(
+            id = System.currentTimeMillis(),
+            userId = userId,
+            items = items.toList(),
+            total = total,
+            timestamp = System.currentTimeMillis()
+        )
+
+        _allOrders.value = _allOrders.value + newOrder
     }
 
     fun loadUserOrders(userId: String) {
-        viewModelScope.launch {
-            repository.getOrdersByUser(userId).collect { list ->
-                _orders.value = list
-            }
-        }
+        _orders.value = _allOrders.value.filter { it.userId == userId }
     }
 
     fun loadAllOrders() {
-        viewModelScope.launch {
-            repository.getAllOrders().collect { list ->
-                _orders.value = list
-            }
-        }
+        _orders.value = _allOrders.value
     }
 
-    fun loadOrderItems(orderId: Long) {
-        viewModelScope.launch {
-            repository.getOrderItems(orderId).collect { list ->
-                _selectedOrderItems.value = list
-            }
-        }
+    fun selectOrder(order: Order) {
+        _selectedOrder.value = order
     }
 
-    fun loadOrderDetail(orderId: Long) {
-        viewModelScope.launch {
-            repository.getOrderWithItems(orderId).collect { pair ->
-                _selectedOrder.value = pair
-            }
-        }
+    fun clearSelectedOrder() {
+        _selectedOrder.value = null
     }
 }

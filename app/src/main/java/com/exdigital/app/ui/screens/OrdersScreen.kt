@@ -20,11 +20,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.exdigital.app.data.UserRepository
-import com.exdigital.app.data.local.entities.OrderEntity
-import com.exdigital.app.models.CartItem
 import com.exdigital.app.ui.theme.*
 import com.exdigital.app.ui.viewmodels.AuthViewModel
+import com.exdigital.app.ui.viewmodels.Order
 import com.exdigital.app.ui.viewmodels.OrdersViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -35,13 +33,14 @@ import java.util.Locale
 fun OrdersScreen(
     navController: NavController,
     authViewModel: AuthViewModel = viewModel(),
-    ordersViewModel: OrdersViewModel = viewModel()
+    ordersViewModel: OrdersViewModel // ✅ Parámetro obligatorio
 ) {
     val currentUser by authViewModel.currentUser.collectAsState()
     val isAdmin by authViewModel.isAdmin.collectAsState()
     val orders by ordersViewModel.orders.collectAsState()
     val selectedOrder by ordersViewModel.selectedOrder.collectAsState()
 
+    // Cargar órdenes según el rol
     val userId = currentUser?.id
     if (isAdmin) {
         ordersViewModel.loadAllOrders()
@@ -115,7 +114,7 @@ fun OrdersScreen(
                             order = order,
                             isAdmin = isAdmin,
                             onClick = {
-                                ordersViewModel.loadOrderDetail(order.id)
+                                ordersViewModel.selectOrder(order)
                             }
                         )
                     }
@@ -123,15 +122,15 @@ fun OrdersScreen(
             }
 
             // Panel de detalle de orden
-            selectedOrder?.let { (order, items) ->
-                OrderDetailPanel(order = order, items = items, isAdmin = isAdmin)
+            selectedOrder?.let { order ->
+                OrderDetailPanel(order = order)
             }
         }
     }
 }
 
 @Composable
-fun OrderCard(order: OrderEntity, isAdmin: Boolean, onClick: () -> Unit) {
+fun OrderCard(order: Order, isAdmin: Boolean, onClick: () -> Unit) {
     val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
 
     Card(
@@ -205,7 +204,7 @@ fun OrderCard(order: OrderEntity, isAdmin: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-fun OrderDetailPanel(order: OrderEntity, items: List<CartItem>, isAdmin: Boolean) {
+fun OrderDetailPanel(order: Order) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -240,7 +239,7 @@ fun OrderDetailPanel(order: OrderEntity, items: List<CartItem>, isAdmin: Boolean
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            items.forEach { cartItem ->
+            order.items.forEach { cartItem ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -282,7 +281,7 @@ fun OrderDetailPanel(order: OrderEntity, items: List<CartItem>, isAdmin: Boolean
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "$${String.format(Locale.getDefault(), "%.2f", items.sumOf { it.subtotal })}",
+                    text = "$${String.format(Locale.getDefault(), "%.2f", order.total)}",
                     color = PrimaryOrange,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Black
