@@ -37,13 +37,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
 import com.exdigital.app.models.CartItem
 import com.exdigital.app.ui.components.ExDigitalButton
 import com.exdigital.app.ui.navigation.Screen
@@ -51,7 +52,6 @@ import com.exdigital.app.ui.theme.BackgroundDark
 import com.exdigital.app.ui.theme.BackgroundDarkest
 import com.exdigital.app.ui.theme.BackgroundLight
 import com.exdigital.app.ui.theme.BackgroundMedium
-import com.exdigital.app.ui.theme.DarkOrange
 import com.exdigital.app.ui.theme.ErrorColor
 import com.exdigital.app.ui.theme.PrimaryOrange
 import com.exdigital.app.ui.theme.TealAccent
@@ -66,14 +66,13 @@ import com.exdigital.app.ui.viewmodels.OrdersViewModel
 @Composable
 fun CartScreen(
     navController: NavController,
-    cartViewModel: CartViewModel, // ✅ Parámetro obligatorio
-    ordersViewModel: OrdersViewModel, // ✅ Parámetro obligatorio
+    cartViewModel: CartViewModel,
+    ordersViewModel: OrdersViewModel,
     authViewModel: AuthViewModel = viewModel()
 ) {
     val cart by cartViewModel.cart.collectAsState()
     val cartItems by cartViewModel.cartItems.collectAsState()
     val currentUser by authViewModel.currentUser.collectAsState()
-
 
     Scaffold(
         topBar = {
@@ -82,13 +81,12 @@ fun CartScreen(
                     Column {
                         Text(
                             text = "Mi Carrito",
-                            fontSize = 20.sp,
                             fontWeight = FontWeight.Bold
                         )
                         if (cart.itemCount > 0) {
                             Text(
-                                text = "${cart.itemCount} ${if (cart.itemCount == 1) "producto" else "productos"}",
-                                fontSize = 14.sp,
+                                text = "${cart.itemCount} artículos",
+                                fontSize = 12.sp,
                                 color = TextTertiary
                             )
                         }
@@ -227,15 +225,15 @@ fun CartItemCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Product Image
-            Box(
+            AsyncImage(
+                model = cartItem.product.imageUrl,
+                contentDescription = cartItem.product.name,
                 modifier = Modifier
                     .size(80.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(BackgroundLight),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(text = "📦", fontSize = 32.sp)
-            }
+                contentScale = ContentScale.Crop
+            )
 
             Spacer(modifier = Modifier.width(12.dp))
 
@@ -462,3 +460,4 @@ fun SummaryRow(label: String, amount: Double, isShipping: Boolean = false) {
         }
     }
 }
+
