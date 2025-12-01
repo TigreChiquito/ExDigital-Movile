@@ -1,5 +1,13 @@
 package com.exdigital.app.ui.screens
 
+import androidx.compose.runtime.LaunchedEffect
+import com.exdigital.app.data.remote.RetrofitClient
+import com.exdigital.app.models.Product
+import com.exdigital.app.data.models.ProductResponse
+import com.exdigital.app.data.models.toProduct
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -53,7 +61,6 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
-import com.exdigital.app.models.Product
 import com.exdigital.app.models.ProductCategory
 import com.exdigital.app.models.displayName
 import com.exdigital.app.ui.navigation.Screen
@@ -66,7 +73,6 @@ import com.exdigital.app.ui.theme.TextPrimary
 import com.exdigital.app.ui.theme.TextTertiary
 import com.exdigital.app.ui.viewmodels.AuthViewModel
 import com.exdigital.app.ui.viewmodels.CartViewModel
-import com.exdigital.app.ui.viewmodels.ProductViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,11 +80,35 @@ fun HomeScreen(
     navController: NavController,
     authViewModel: AuthViewModel = viewModel(),
     cartViewModel: CartViewModel, // ✅ Parámetro obligatorio (sin default)
-    productViewModel: ProductViewModel = viewModel()
 ) {
     val currentUser by authViewModel.currentUser.collectAsState()
     val cart by cartViewModel.cart.collectAsState()
-    val products by productViewModel.products.collectAsState()
+
+    // Dejamos de usar el flujo de productos del ViewModel para esta pantalla
+    // val products by productViewModel.products.collectAsState()
+
+    // Estado local para los productos cargados desde el servidor
+    var products by remember { mutableStateOf(emptyList<Product>()) }
+
+    // Llamada a la API al entrar en la pantalla
+    LaunchedEffect(Unit) {
+        RetrofitClient.instance.obtenerProductos()
+            .enqueue(object : Callback<List<ProductResponse>> {
+                override fun onResponse(
+                    call: Call<List<ProductResponse>>,
+                    response: Response<List<ProductResponse>>
+                ) {
+                    if (response.isSuccessful) {
+                        val listaServidor = response.body() ?: emptyList()
+                        products = listaServidor.map { it.toProduct() }
+                    }
+                }
+
+                override fun onFailure(call: Call<List<ProductResponse>>, t: Throwable) {
+                    // En esta versión educativa simplemente dejamos la lista vacía
+                }
+            })
+    }
 
     var selectedCategory by remember { mutableStateOf<ProductCategory?>(null) }
 

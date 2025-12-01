@@ -6,7 +6,6 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
-import com.exdigital.app.models.Cart
 import com.exdigital.app.models.User
 import com.exdigital.app.models.CartItem
 import com.google.gson.Gson
@@ -66,7 +65,7 @@ class DataStoreManager(private val context: Context) {
         val cartJson = preferences[CART_ITEMS_KEY]
         if (cartJson != null) {
             val type = object : TypeToken<List<CartItem>>() {}.type
-            gson.fromJson(cartJson, type) ?: emptyList()
+            gson.fromJson<List<CartItem>>(cartJson, type) ?: emptyList()
         } else emptyList()
     }
 
@@ -75,24 +74,22 @@ class DataStoreManager(private val context: Context) {
             val currentCartJson = preferences[CART_ITEMS_KEY]
             val currentCart: MutableList<CartItem> = if (currentCartJson != null) {
                 val type = object : TypeToken<List<CartItem>>() {}.type
-                gson.fromJson(currentCartJson, type)
+                gson.fromJson<List<CartItem>>(currentCartJson, type)?.toMutableList() ?: mutableListOf()
             } else {
                 mutableListOf()
             }
 
-            // Verificar si el producto ya existe en el carrito
+            // Usamos el nombre del producto como identificador simple
             val existingItemIndex = currentCart.indexOfFirst {
-                it.product.id == cartItem.product.id
+                it.product.name == cartItem.product.name
             }
 
             if (existingItemIndex != -1) {
-                // Si existe, actualizar cantidad
                 val existingItem = currentCart[existingItemIndex]
                 currentCart[existingItemIndex] = existingItem.copy(
                     quantity = existingItem.quantity + cartItem.quantity
                 )
             } else {
-                // Si no existe, agregar nuevo
                 currentCart.add(cartItem)
             }
 
@@ -100,26 +97,26 @@ class DataStoreManager(private val context: Context) {
         }
     }
 
-    suspend fun removeFromCart(productId: String) {
+    suspend fun removeFromCart(productName: String) {
         context.dataStore.edit { preferences ->
             val currentCartJson = preferences[CART_ITEMS_KEY]
             if (currentCartJson != null) {
                 val type = object : TypeToken<List<CartItem>>() {}.type
-                val currentCart: MutableList<CartItem> = gson.fromJson(currentCartJson, type)
-                currentCart.removeAll { it.product.id == productId }
+                val currentCart: MutableList<CartItem> = gson.fromJson<List<CartItem>>(currentCartJson, type)?.toMutableList() ?: mutableListOf()
+                currentCart.removeAll { it.product.name == productName }
                 preferences[CART_ITEMS_KEY] = gson.toJson(currentCart)
             }
         }
     }
 
-    suspend fun updateCartItemQuantity(productId: String, newQuantity: Int) {
+    suspend fun updateCartItemQuantity(productName: String, newQuantity: Int) {
         context.dataStore.edit { preferences ->
             val currentCartJson = preferences[CART_ITEMS_KEY]
             if (currentCartJson != null) {
                 val type = object : TypeToken<List<CartItem>>() {}.type
-                val currentCart: MutableList<CartItem> = gson.fromJson(currentCartJson, type)
+                val currentCart: MutableList<CartItem> = gson.fromJson<List<CartItem>>(currentCartJson, type)?.toMutableList() ?: mutableListOf()
 
-                val itemIndex = currentCart.indexOfFirst { it.product.id == productId }
+                val itemIndex = currentCart.indexOfFirst { it.product.name == productName }
                 if (itemIndex != -1) {
                     if (newQuantity > 0) {
                         currentCart[itemIndex] = currentCart[itemIndex].copy(quantity = newQuantity)

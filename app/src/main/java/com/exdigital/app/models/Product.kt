@@ -1,5 +1,7 @@
 package com.exdigital.app.models
 
+// Modelo de dominio usado en toda la app
+
 data class Product(
     val id: String,
     val name: String,
@@ -23,7 +25,7 @@ enum class ProductCategory {
 }
 
 fun ProductCategory.displayName(): String {
-    return when(this) {
+    return when (this) {
         ProductCategory.MOUSE -> "Mouse"
         ProductCategory.KEYBOARD -> "Teclado"
         ProductCategory.HEADSET -> "Audífonos"

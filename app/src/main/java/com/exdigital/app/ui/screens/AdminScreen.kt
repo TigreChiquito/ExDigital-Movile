@@ -1,6 +1,5 @@
 package com.exdigital.app.ui.screens
 
-import com.exdigital.app.models.ProductCategory
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -13,22 +12,19 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
@@ -48,40 +44,34 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.exdigital.app.models.Product
-import com.exdigital.app.models.displayName
-import com.exdigital.app.ui.theme.BackgroundDark
+import com.exdigital.app.ui.components.ExDigitalButton
 import com.exdigital.app.ui.theme.BackgroundDarkest
-import com.exdigital.app.ui.theme.BackgroundLight
 import com.exdigital.app.ui.theme.BackgroundMedium
-import com.exdigital.app.ui.theme.ErrorColor
 import com.exdigital.app.ui.theme.PrimaryOrange
 import com.exdigital.app.ui.theme.TealAccent
 import com.exdigital.app.ui.theme.TextPrimary
-import com.exdigital.app.ui.theme.TextSecondary
 import com.exdigital.app.ui.theme.TextTertiary
 import com.exdigital.app.ui.viewmodels.OrdersViewModel
-import com.exdigital.app.ui.viewmodels.ProductViewModel
-import java.util.Locale
+import com.exdigital.app.ui.viewmodels.SimpleProductViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminScreen(
     navController: NavController,
-    productViewModel: ProductViewModel = viewModel(),
-    ordersViewModel: OrdersViewModel = viewModel()
+    ordersViewModel: OrdersViewModel = viewModel(),
+    productViewModel: SimpleProductViewModel = viewModel()
 ) {
-    val products by productViewModel.products.collectAsState()
     val orders by ordersViewModel.orders.collectAsState()
-    var showAddDialog by remember { mutableStateOf(false) }
-    var selectedProduct by remember { mutableStateOf<Product?>(null) }
+    val products by productViewModel.products.collectAsState()
     var selectedTab by remember { mutableStateOf(0) }
+    var showAddProductDialog by remember { mutableStateOf(false) }
 
-    // Cargar órdenes para admin
     LaunchedEffect(Unit) {
         ordersViewModel.loadAllOrders()
+        productViewModel.loadProducts()
     }
 
     Scaffold(
@@ -95,7 +85,7 @@ fun AdminScreen(
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "${products.size} productos en stock",
+                            text = if (selectedTab == 0) "${products.size} productos" else "${orders.size} órdenes",
                             fontSize = 14.sp,
                             color = TextTertiary
                         )
@@ -119,7 +109,7 @@ fun AdminScreen(
         floatingActionButton = {
             if (selectedTab == 0) {
                 FloatingActionButton(
-                    onClick = { showAddDialog = true },
+                    onClick = { showAddProductDialog = true },
                     containerColor = PrimaryOrange,
                     contentColor = TextPrimary
                 ) {
@@ -153,254 +143,97 @@ fun AdminScreen(
                 )
             }
 
-            if (selectedTab == 0) {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    item {
-                        AdminStatsCard(
-                            totalProducts = products.size,
-                            totalStock = products.sumOf { it.stock },
-                            lowStockCount = products.count { it.stock < 5 }
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                    }
+            Spacer(modifier = Modifier.height(16.dp))
 
-                    items(products, key = { it.id }) { product ->
-                        AdminProductCard(
-                            product = product,
-                            onEdit = {
-                                selectedProduct = product
-                                showAddDialog = true
-                            },
-                            onDelete = {
-                                productViewModel.deleteProduct(product.id)
-                            }
-                        )
-                    }
-                }
-            } else {
+            if (selectedTab == 0) {
+                // Pestaña de Productos
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                        .padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(bottom = 80.dp)
+                ) {
+                    items(products, key = { it.id }) { product ->
+                        AdminProductCard(product = product)
+                    }
+                }
+            } else {
+                // Pestaña de Órdenes
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(bottom = 16.dp)
                 ) {
                     items(orders, key = { it.id }) { order ->
-                        OrderCard(order = order, isAdmin = true, onClick = { /* sin acción, solo vista resumen en admin */ })
+                        OrderCard(order = order, isAdmin = true, onClick = {})
                     }
                 }
             }
         }
     }
 
-    // Dialog para agregar/editar producto
-    if (showAddDialog) {
-        AddEditProductDialog(
-            product = selectedProduct,
-            onDismiss = {
-                showAddDialog = false
-                selectedProduct = null
-            },
-            onSave = { product ->
-                if (selectedProduct != null) {
-                    productViewModel.updateProduct(product)
-                } else {
-                    productViewModel.addProduct(product)
-                }
-                showAddDialog = false
-                selectedProduct = null
+    if (showAddProductDialog) {
+        AddProductDialog(
+            onDismiss = { showAddProductDialog = false },
+            onSave = { nombre, precio, stock, imagenUrl ->
+                productViewModel.addProduct(nombre, precio, stock, imagenUrl)
+                showAddProductDialog = false
             }
         )
     }
 }
 
 @Composable
-fun AdminStatsCard(
-    totalProducts: Int,
-    totalStock: Int,
-    lowStockCount: Int
-) {
+fun AdminProductCard(product: com.exdigital.app.models.Product) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = BackgroundMedium
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
-            horizontalArrangement = Arrangement.SpaceAround
-        ) {
-            StatItem("Productos", totalProducts.toString(), PrimaryOrange)
-            StatItem("Stock Total", totalStock.toString(), TealAccent)
-            StatItem("Stock Bajo", lowStockCount.toString(), if (lowStockCount > 0) ErrorColor else TealAccent)
-        }
-    }
-}
-
-@Composable
-fun StatItem(label: String, value: String, color: androidx.compose.ui.graphics.Color) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            text = value,
-            fontSize = 32.sp,
-            fontWeight = FontWeight.Black,
-            color = color
-        )
-        Text(
-            text = label,
-            fontSize = 12.sp,
-            color = TextTertiary
-        )
-    }
-}
-
-@Composable
-fun AdminProductCard(
-    product: Product,
-    onEdit: () -> Unit,
-    onDelete: () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = BackgroundMedium.copy(alpha = 0.5f)
-        )
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = BackgroundMedium)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .size(80.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(BackgroundLight),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(text = "📦", fontSize = 32.sp)
-            }
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = product.name,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary,
-                    maxLines = 2
+                    color = TextPrimary
                 )
-
                 Spacer(modifier = Modifier.height(4.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column {
-                        Text(
-                            text = product.category.displayName(),
-                            fontSize = 12.sp,
-                            color = TealAccent
-                        )
-                        Text(
-                            text = product.brand,
-                            fontSize = 12.sp,
-                            color = TextTertiary
-                        )
-                    }
-
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text(
-                            text = "$${String.format(Locale.getDefault(), "%.2f", product.price)}",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = PrimaryOrange
-                        )
-                        Text(
-                            text = "Stock: ${product.stock}",
-                            fontSize = 12.sp,
-                            color = if (product.stock < 5) ErrorColor else TextSecondary,
-                            fontWeight = if (product.stock < 5) FontWeight.Bold else FontWeight.Normal
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.width(8.dp))
-
-            Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                IconButton(
-                    onClick = onEdit,
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(BackgroundDark)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = "Editar",
-                        tint = TealAccent,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-
-                IconButton(
-                    onClick = onDelete,
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(BackgroundDark)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "Eliminar",
-                        tint = ErrorColor,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
+                Text(
+                    text = "$${product.price} • Stock: ${product.stock}",
+                    fontSize = 14.sp,
+                    color = TextTertiary
+                )
             }
         }
     }
 }
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun AddEditProductDialog(
-    product: Product?,
-    onDismiss: () -> Unit,
-    onSave: (Product) -> Unit
-) {
-    var name by remember { mutableStateOf(product?.name ?: "") }
-    var description by remember { mutableStateOf(product?.description ?: "") }
-    var price by remember { mutableStateOf(product?.price?.toString() ?: "") }
-    var brand by remember { mutableStateOf(product?.brand ?: "") }
-    var stock by remember { mutableStateOf(product?.stock?.toString() ?: "") }
-    var selectedCategory by remember { mutableStateOf(product?.category ?: ProductCategory.OTHER) }
-    var showCategoryMenu by remember { mutableStateOf(false) }
 
-    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+@Composable
+fun AddProductDialog(
+    onDismiss: () -> Unit,
+    onSave: (String, Double, Int, String?) -> Unit
+) {
+    var nombre by remember { mutableStateOf("") }
+    var precio by remember { mutableStateOf("") }
+    var stock by remember { mutableStateOf("") }
+    var imagenUrl by remember { mutableStateOf("") }
+    var errorMessage by remember { mutableStateOf("") }
+
+    Dialog(onDismissRequest = onDismiss) {
         Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = BackgroundDark
-            )
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = BackgroundMedium)
         ) {
             Column(
                 modifier = Modifier
@@ -408,128 +241,72 @@ fun AddEditProductDialog(
                     .padding(24.dp)
             ) {
                 Text(
-                    text = if (product == null) "Nuevo Producto" else "Editar Producto",
-                    fontSize = 24.sp,
+                    text = "Nuevo Producto",
+                    fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     color = TextPrimary
                 )
 
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-                // Name
-                com.exdigital.app.ui.components.ExDigitalTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = "Nombre del producto",
-                    placeholder = "Ej: Logitech G Pro"
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Brand
-                com.exdigital.app.ui.components.ExDigitalTextField(
-                    value = brand,
-                    onValueChange = { brand = it },
-                    label = "Marca",
-                    placeholder = "Ej: Logitech"
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Category
-                Box {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(BackgroundMedium)
-                            .clickable { showCategoryMenu = !showCategoryMenu }
-                            .padding(16.dp)
-                    ) {
-                        Text(
-                            text = "Categoría",
-                            fontSize = 12.sp,
-                            color = TextTertiary
-                        )
-                        Text(
-                            text = selectedCategory.displayName(),
-                            fontSize = 16.sp,
-                            color = TextPrimary
-                        )
-                    }
-
-                    if (showCategoryMenu) {
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 70.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = BackgroundMedium
-                            )
-                        ) {
-                            Column {
-                                ProductCategory.entries.forEach { category ->
-                                    Text(
-                                        text = category.displayName(),
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clickable {
-                                                selectedCategory = category
-                                                showCategoryMenu = false
-                                            }
-                                            .padding(16.dp),
-                                        color = TextPrimary
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Row(
+                OutlinedTextField(
+                    value = nombre,
+                    onValueChange = {
+                        nombre = it
+                        errorMessage = ""
+                    },
+                    label = { Text("Nombre") },
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    // Price
-                    com.exdigital.app.ui.components.ExDigitalTextField(
-                        value = price,
-                        onValueChange = { price = it },
-                        label = "Precio",
-                        placeholder = "99.99",
-                        modifier = Modifier.weight(1f),
-                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                            keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal
-                        )
-                    )
-
-                    // Stock
-                    com.exdigital.app.ui.components.ExDigitalTextField(
-                        value = stock,
-                        onValueChange = { stock = it },
-                        label = "Stock",
-                        placeholder = "10",
-                        modifier = Modifier.weight(1f),
-                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                            keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
-                        )
-                    )
-                }
+                    singleLine = true
+                )
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Description
-                com.exdigital.app.ui.components.ExDigitalTextField(
-                    value = description,
-                    onValueChange = { description = it },
-                    label = "Descripción",
-                    placeholder = "Descripción del producto"
+                OutlinedTextField(
+                    value = precio,
+                    onValueChange = {
+                        precio = it
+                        errorMessage = ""
+                    },
+                    label = { Text("Precio") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
                 )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = stock,
+                    onValueChange = {
+                        stock = it
+                        errorMessage = ""
+                    },
+                    label = { Text("Stock") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = imagenUrl,
+                    onValueChange = { imagenUrl = it },
+                    label = { Text("URL de Imagen (opcional)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+
+                if (errorMessage.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = errorMessage,
+                        color = androidx.compose.material3.MaterialTheme.colorScheme.error,
+                        fontSize = 14.sp
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Buttons
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -539,7 +316,7 @@ fun AddEditProductDialog(
                             .weight(1f)
                             .height(56.dp)
                             .clip(RoundedCornerShape(16.dp))
-                            .background(BackgroundMedium)
+                            .background(BackgroundDarkest)
                             .clickable(onClick = onDismiss),
                         contentAlignment = Alignment.Center
                     ) {
@@ -550,35 +327,28 @@ fun AddEditProductDialog(
                         )
                     }
 
-                    com.exdigital.app.ui.components.ExDigitalButton(
+                    ExDigitalButton(
                         text = "Guardar",
                         onClick = {
-                            val priceValue = price.toDoubleOrNull() ?: 0.0
-                            val stockValue = stock.toIntOrNull() ?: 0
-
-                            val newProduct = if (product != null) {
-                                product.copy(
-                                    name = name,
-                                    description = description,
-                                    price = priceValue,
-                                    brand = brand,
-                                    stock = stockValue,
-                                    category = selectedCategory
-                                )
-                            } else {
-                                Product(
-                                    id = java.util.UUID.randomUUID().toString(),
-                                    name = name,
-                                    description = description,
-                                    price = priceValue,
-                                    imageUrl = "https://via.placeholder.com/300x300/FF8A3D/FFFFFF?text=Producto",
-                                    category = selectedCategory,
-                                    stock = stockValue,
-                                    brand = brand,
-                                    rating = 0.0
-                                )
+                            // Validación
+                            if (nombre.isBlank()) {
+                                errorMessage = "El nombre es obligatorio"
+                                return@ExDigitalButton
                             }
-                            onSave(newProduct)
+
+                            val precioValue = precio.toDoubleOrNull()
+                            if (precioValue == null || precioValue <= 0) {
+                                errorMessage = "Ingresa un precio válido"
+                                return@ExDigitalButton
+                            }
+
+                            val stockValue = stock.toIntOrNull()
+                            if (stockValue == null || stockValue < 0) {
+                                errorMessage = "Ingresa un stock válido"
+                                return@ExDigitalButton
+                            }
+
+                            onSave(nombre, precioValue, stockValue, imagenUrl.ifEmpty { null })
                         },
                         modifier = Modifier.weight(1f)
                     )
@@ -587,3 +357,5 @@ fun AddEditProductDialog(
         }
     }
 }
+
+

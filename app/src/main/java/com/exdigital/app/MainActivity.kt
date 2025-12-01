@@ -16,6 +16,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // YA BORRAMOS EL "probarConexion()" DE AQUÍ
+
         setContent {
             ExDigitalTheme {
                 Surface(
@@ -28,4 +31,6 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    // Y BORRAMOS LA FUNCIÓN DE ABAJO TAMBIÉN
 }
