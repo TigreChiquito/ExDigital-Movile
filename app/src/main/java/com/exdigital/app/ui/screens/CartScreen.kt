@@ -1,6 +1,7 @@
 package com.exdigital.app.ui.screens
 
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -74,6 +75,8 @@ fun CartScreen(
     val cart by cartViewModel.cart.collectAsState()
     val cartItems by cartViewModel.cartItems.collectAsState()
     val currentUser by authViewModel.currentUser.collectAsState()
+    val context = androidx.compose.ui.platform.LocalContext.current
+
 
     // Log para debugging
     Log.d("CartScreen", "🛒 Usuario actual: ${currentUser?.email}, ID: ${currentUser?.id}")
@@ -200,18 +203,32 @@ fun CartScreen(
 
                         if (userId.isNullOrBlank()) {
                             Log.e("CartScreen", "❌ Error: Usuario no está logueado o no tiene ID")
+                            Toast.makeText(context, "Debes iniciar sesión primero", Toast.LENGTH_SHORT).show()
                         } else if (cartItems.isEmpty()) {
                             Log.e("CartScreen", "❌ Error: Carrito vacío")
+                            Toast.makeText(context, "El carrito está vacío", Toast.LENGTH_SHORT).show()
                         } else {
                             Log.d("CartScreen", "✅ Llamando checkout con userId: $userId")
-                            cartViewModel.checkout(userId, ordersViewModel)
 
-                            // Dar tiempo para que se procese el checkout
-                            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                                navController.navigate(Screen.Orders.route) {
-                                    popUpTo(Screen.Home.route)
+                            cartViewModel.checkout(
+                                userId = userId,
+                                ordersViewModel = ordersViewModel,
+                                onSuccess = {
+                                    Log.d("CartScreen", "✅ Checkout completado exitosamente")
+                                    Toast.makeText(context, "¡Compra realizada exitosamente!", Toast.LENGTH_LONG).show()
+
+                                    // Navegar a Orders después de éxito
+                                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                                        navController.navigate(Screen.Orders.route) {
+                                            popUpTo(Screen.Home.route)
+                                        }
+                                    }, 1000)
+                                },
+                                onError = { error ->
+                                    Log.e("CartScreen", "❌ Error en checkout: $error")
+                                    Toast.makeText(context, "Error al procesar la compra: $error", Toast.LENGTH_LONG).show()
                                 }
-                            }, 500)
+                            )
                         }
                     },
                     onClearCart = {

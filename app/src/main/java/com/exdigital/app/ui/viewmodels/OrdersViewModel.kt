@@ -38,7 +38,7 @@ class OrdersViewModel : ViewModel() {
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
-    fun addOrder(usuarioId: Long, items: List<CartItem>, total: Double) {
+    fun addOrder(usuarioId: Long, items: List<CartItem>, total: Double, onSuccess: () -> Unit = {}, onError: (String) -> Unit = {}) {
         _isLoading.value = true
 
         // Convertir CartItems a OrdenItemRequest
@@ -57,35 +57,47 @@ class OrdersViewModel : ViewModel() {
         )
 
         Log.d("OrdersViewModel", "📤 Creando orden para usuario: $usuarioId con ${ordenItems.size} items")
+        Log.d("OrdersViewModel", "📦 Items: ${ordenItems.map { "ID:${it.productoId}, Q:${it.cantidad}, P:${it.precioUnitario}" }}")
 
         RetrofitClient.instance.crearOrden(request).enqueue(object : Callback<OrderResponse> {
             override fun onResponse(call: Call<OrderResponse>, response: Response<OrderResponse>) {
                 _isLoading.value = false
                 if (response.isSuccessful) {
-                    Log.d("OrdersViewModel", "✅ Orden creada exitosamente: ${response.body()?.id}")
+                    val ordenId = response.body()?.id
+                    Log.d("OrdersViewModel", "✅ Orden creada exitosamente: $ordenId")
                     // Recargar órdenes
                     loadAllOrders()
+                    onSuccess()
                 } else {
                     val errorBody = response.errorBody()?.string()
+                    val errorMsg = "Error ${response.code()}: $errorBody"
                     Log.e("OrdersViewModel", "❌ Error al crear orden: ${response.code()}")
                     Log.e("OrdersViewModel", "❌ Error body: $errorBody")
+                    Log.e("OrdersViewModel", "❌ Request enviado: usuarioId=$usuarioId, items=${ordenItems.size}, total=$total")
+                    onError(errorMsg)
                 }
             }
 
             override fun onFailure(call: Call<OrderResponse>, t: Throwable) {
                 _isLoading.value = false
+                val errorMsg = "Error de conexión: ${t.message}"
                 Log.e("OrdersViewModel", "💀 Error de red al crear orden: ${t.message}")
+                Log.e("OrdersViewModel", "💀 ¿Servidor Spring Boot corriendo en puerto 8081?")
                 t.printStackTrace()
+                onError(errorMsg)
             }
         })
     }
 
     fun loadUserOrders(userId: String) {
+        Log.d("OrdersViewModel", "👤 Cargando órdenes del usuario: $userId")
         loadAllOrders(filterByUserId = userId)
     }
 
     fun loadAllOrders(filterByUserId: String? = null) {
         _isLoading.value = true
+
+        Log.d("OrdersViewModel", "🔄 Iniciando carga de órdenes - Filtro: ${filterByUserId ?: "ninguno (admin)"}")
 
         RetrofitClient.instance.obtenerOrdenes().enqueue(object : Callback<List<OrderResponse>> {
             override fun onResponse(
@@ -95,11 +107,13 @@ class OrdersViewModel : ViewModel() {
                 _isLoading.value = false
                 if (response.isSuccessful) {
                     val ordersFromApi = response.body() ?: emptyList()
-                    Log.d("OrdersViewModel", "✅ Órdenes cargadas: ${ordersFromApi.size}")
+                    Log.d("OrdersViewModel", "✅ Respuesta del servidor: ${ordersFromApi.size} órdenes")
 
                     // Convertir OrderResponse a Order
                     var orders = ordersFromApi.mapNotNull { orderResponse ->
                         try {
+                            Log.d("OrdersViewModel", "📦 Parseando orden ID: ${orderResponse.id}, Usuario: ${orderResponse.usuario?.nombre}")
+
                             // Convertir OrdenItemResponse a CartItem
                             val items = orderResponse.items.map { ordenItem ->
                                 CartItem(
@@ -128,20 +142,27 @@ class OrdersViewModel : ViewModel() {
                                 status = orderResponse.estado
                             )
                         } catch (e: Exception) {
-                            Log.e("OrdersViewModel", "Error parseando orden: ${e.message}")
+                            Log.e("OrdersViewModel", "❌ Error parseando orden ${orderResponse.id}: ${e.message}")
                             e.printStackTrace()
                             null
                         }
                     }
 
+                    Log.d("OrdersViewModel", "✅ Órdenes parseadas correctamente: ${orders.size}")
+
                     // Filtrar por usuario si es necesario
                     if (filterByUserId != null) {
+                        val beforeFilter = orders.size
                         orders = orders.filter { it.userId == filterByUserId }
+                        Log.d("OrdersViewModel", "🔍 Filtrado por usuario $filterByUserId: ${orders.size} de $beforeFilter órdenes")
                     }
 
                     _orders.value = orders
+                    Log.d("OrdersViewModel", "📊 Total órdenes en StateFlow: ${_orders.value.size}")
                 } else {
+                    val errorBody = response.errorBody()?.string()
                     Log.e("OrdersViewModel", "❌ Error al cargar órdenes: ${response.code()}")
+                    Log.e("OrdersViewModel", "❌ Error body: $errorBody")
                     _orders.value = emptyList()
                 }
             }

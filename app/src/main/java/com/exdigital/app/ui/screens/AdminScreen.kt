@@ -1,5 +1,6 @@
 package com.exdigital.app.ui.screens
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -51,11 +52,11 @@ import com.exdigital.app.ui.components.ExDigitalButton
 import com.exdigital.app.ui.theme.BackgroundDarkest
 import com.exdigital.app.ui.theme.BackgroundMedium
 import com.exdigital.app.ui.theme.PrimaryOrange
-import com.exdigital.app.ui.theme.TealAccent
 import com.exdigital.app.ui.theme.TextPrimary
 import com.exdigital.app.ui.theme.TextTertiary
 import com.exdigital.app.ui.viewmodels.OrdersViewModel
 import com.exdigital.app.ui.viewmodels.SimpleProductViewModel
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,10 +70,22 @@ fun AdminScreen(
     var selectedTab by remember { mutableStateOf(0) }
     var showAddProductDialog by remember { mutableStateOf(false) }
 
+    // Cargar datos inicialmente
     LaunchedEffect(Unit) {
+        Log.d("AdminScreen", "🔄 Cargando datos iniciales")
         ordersViewModel.loadAllOrders()
         productViewModel.loadProducts()
     }
+
+    // Recargar órdenes cuando se cambia a la pestaña de Órdenes
+    LaunchedEffect(selectedTab) {
+        if (selectedTab == 1) {
+            Log.d("AdminScreen", "📋 Pestaña Órdenes seleccionada - Recargando")
+            ordersViewModel.loadAllOrders()
+        }
+    }
+
+    Log.d("AdminScreen", "📊 Productos: ${products.size}, Órdenes: ${orders.size}, Tab: $selectedTab")
 
     Scaffold(
         topBar = {

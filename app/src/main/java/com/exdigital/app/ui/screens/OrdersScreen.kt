@@ -1,5 +1,6 @@
 package com.exdigital.app.ui.screens
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -11,6 +12,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -28,6 +30,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OrdersScreen(
@@ -40,13 +43,23 @@ fun OrdersScreen(
     val orders by ordersViewModel.orders.collectAsState()
     val selectedOrder by ordersViewModel.selectedOrder.collectAsState()
 
-    // Cargar órdenes según el rol
-    val userId = currentUser?.id
-    if (isAdmin) {
-        ordersViewModel.loadAllOrders()
-    } else if (userId != null) {
-        ordersViewModel.loadUserOrders(userId)
+    // Cargar órdenes cada vez que se abre la pantalla
+    LaunchedEffect(currentUser, isAdmin) {
+        val userId = currentUser?.id
+        Log.d("OrdersScreen", "📋 Cargando órdenes - Usuario: ${currentUser?.email}, ID: $userId, isAdmin: $isAdmin")
+
+        if (isAdmin) {
+            Log.d("OrdersScreen", "👑 Modo Admin - Cargando todas las órdenes")
+            ordersViewModel.loadAllOrders()
+        } else if (userId != null) {
+            Log.d("OrdersScreen", "👤 Modo Usuario - Cargando órdenes del usuario: $userId")
+            ordersViewModel.loadUserOrders(userId)
+        } else {
+            Log.e("OrdersScreen", "❌ Error: Usuario no logueado")
+        }
     }
+
+    Log.d("OrdersScreen", "📊 Órdenes en pantalla: ${orders.size}")
 
     Scaffold(
         topBar = {

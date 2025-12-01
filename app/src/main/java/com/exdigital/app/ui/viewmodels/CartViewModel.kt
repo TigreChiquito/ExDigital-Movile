@@ -71,12 +71,13 @@ class CartViewModel : ViewModel() {
         _cart.value = Cart()
     }
 
-    fun checkout(userId: String, ordersViewModel: OrdersViewModel) {
+    fun checkout(userId: String, ordersViewModel: OrdersViewModel, onSuccess: () -> Unit = {}, onError: (String) -> Unit = {}) {
         val items = _cartItems.value
         val total = _cart.value.total
 
         if (items.isEmpty()) {
-            Log.d("CartViewModel", "⚠️ Checkout cancelado: carrito vacío")
+            Log.e("CartViewModel", "⚠️ Checkout cancelado: carrito vacío")
+            onError("El carrito está vacío")
             return
         }
 
@@ -84,11 +85,25 @@ class CartViewModel : ViewModel() {
         val userIdLong = userId.toLongOrNull()
         if (userIdLong == null) {
             Log.e("CartViewModel", "❌ Error: userId no es un número válido: $userId")
+            onError("Error: Usuario no válido")
             return
         }
 
         Log.d("CartViewModel", "✅ Checkout iniciado: ${items.size} items, total: $$total, usuario: $userIdLong")
-        ordersViewModel.addOrder(userIdLong, items, total)
-        clearCart()
+
+        ordersViewModel.addOrder(
+            usuarioId = userIdLong,
+            items = items,
+            total = total,
+            onSuccess = {
+                Log.d("CartViewModel", "🗑️ Orden creada exitosamente - Limpiando carrito")
+                clearCart()
+                onSuccess()
+            },
+            onError = { error ->
+                Log.e("CartViewModel", "❌ Error al crear orden: $error")
+                onError(error)
+            }
+        )
     }
 }
