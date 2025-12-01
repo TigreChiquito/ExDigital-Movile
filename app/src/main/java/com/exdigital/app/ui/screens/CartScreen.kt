@@ -270,7 +270,7 @@ fun CartItemCard(
                     .background(BackgroundLight),
                 contentScale = ContentScale.Crop
             )
-
+e
             Spacer(modifier = Modifier.width(12.dp))
 
             Column(
