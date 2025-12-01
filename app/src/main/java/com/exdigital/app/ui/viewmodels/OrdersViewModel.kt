@@ -2,16 +2,15 @@ package com.exdigital.app.ui.viewmodels
 
 import android.util.Log
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import com.exdigital.app.data.models.CreateOrderRequest
 import com.exdigital.app.data.models.OrderResponse
+import com.exdigital.app.data.models.OrdenItemRequest
 import com.exdigital.app.data.remote.RetrofitClient
 import com.exdigital.app.models.CartItem
-import com.google.gson.Gson
+import com.exdigital.app.data.models.toProduct
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -21,6 +20,7 @@ import java.util.Locale
 data class Order(
     val id: Long,
     val userId: String,
+    val userName: String,
     val items: List<CartItem>,
     val total: Double,
     val timestamp: Long,
@@ -38,20 +38,25 @@ class OrdersViewModel : ViewModel() {
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
-    private val gson = Gson()
-
-    fun addOrder(userId: String, items: List<CartItem>, total: Double) {
+    fun addOrder(usuarioId: Long, items: List<CartItem>, total: Double) {
         _isLoading.value = true
 
-        // Serializar items a JSON
-        val itemsJson = gson.toJson(items)
+        // Convertir CartItems a OrdenItemRequest
+        val ordenItems = items.map { cartItem ->
+            OrdenItemRequest(
+                productoId = cartItem.product.id.toLongOrNull() ?: 0L,
+                cantidad = cartItem.quantity,
+                precioUnitario = cartItem.product.price
+            )
+        }
 
         val request = CreateOrderRequest(
-            usuarioId = userId,
-            total = total,
-            estado = "PAGADO",
-            items = itemsJson
+            usuarioId = usuarioId,
+            items = ordenItems,
+            estado = "PAGADO"
         )
+
+        Log.d("OrdersViewModel", "📤 Creando orden para usuario: $usuarioId con ${ordenItems.size} items")
 
         RetrofitClient.instance.crearOrden(request).enqueue(object : Callback<OrderResponse> {
             override fun onResponse(call: Call<OrderResponse>, response: Response<OrderResponse>) {
@@ -61,13 +66,16 @@ class OrdersViewModel : ViewModel() {
                     // Recargar órdenes
                     loadAllOrders()
                 } else {
+                    val errorBody = response.errorBody()?.string()
                     Log.e("OrdersViewModel", "❌ Error al crear orden: ${response.code()}")
+                    Log.e("OrdersViewModel", "❌ Error body: $errorBody")
                 }
             }
 
             override fun onFailure(call: Call<OrderResponse>, t: Throwable) {
                 _isLoading.value = false
                 Log.e("OrdersViewModel", "💀 Error de red al crear orden: ${t.message}")
+                t.printStackTrace()
             }
         })
     }
@@ -92,27 +100,28 @@ class OrdersViewModel : ViewModel() {
                     // Convertir OrderResponse a Order
                     var orders = ordersFromApi.mapNotNull { orderResponse ->
                         try {
-                            // Parsear items JSON
-                            val items = if (!orderResponse.items.isNullOrEmpty()) {
-                                gson.fromJson(
-                                    orderResponse.items,
-                                    Array<CartItem>::class.java
-                                ).toList()
-                            } else {
-                                emptyList()
+                            // Convertir OrdenItemResponse a CartItem
+                            val items = orderResponse.items.map { ordenItem ->
+                                CartItem(
+                                    product = ordenItem.producto.toProduct(),
+                                    quantity = ordenItem.cantidad
+                                )
                             }
 
                             // Parsear timestamp
                             val timestamp = try {
-                                SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
-                                    .parse(orderResponse.createdAt)?.time ?: System.currentTimeMillis()
+                                orderResponse.createdAt?.let {
+                                    SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+                                        .parse(it)?.time
+                                } ?: System.currentTimeMillis()
                             } catch (e: Exception) {
                                 System.currentTimeMillis()
                             }
 
                             Order(
                                 id = orderResponse.id,
-                                userId = orderResponse.usuarioId,
+                                userId = orderResponse.usuario?.id?.toString() ?: "unknown",
+                                userName = orderResponse.usuario?.nombre ?: "Usuario",
                                 items = items,
                                 total = orderResponse.total,
                                 timestamp = timestamp,
@@ -120,6 +129,7 @@ class OrdersViewModel : ViewModel() {
                             )
                         } catch (e: Exception) {
                             Log.e("OrdersViewModel", "Error parseando orden: ${e.message}")
+                            e.printStackTrace()
                             null
                         }
                     }
@@ -139,6 +149,7 @@ class OrdersViewModel : ViewModel() {
             override fun onFailure(call: Call<List<OrderResponse>>, t: Throwable) {
                 _isLoading.value = false
                 Log.e("OrdersViewModel", "💀 Error de red al cargar órdenes: ${t.message}")
+                t.printStackTrace()
                 _orders.value = emptyList()
             }
         })

@@ -80,8 +80,15 @@ class CartViewModel : ViewModel() {
             return
         }
 
-        Log.d("CartViewModel", "✅ Checkout exitoso: ${items.size} items, total: $$total")
-        ordersViewModel.addOrder(userId, items, total)
+        // Convertir userId String a Long
+        val userIdLong = userId.toLongOrNull()
+        if (userIdLong == null) {
+            Log.e("CartViewModel", "❌ Error: userId no es un número válido: $userId")
+            return
+        }
+
+        Log.d("CartViewModel", "✅ Checkout iniciado: ${items.size} items, total: $$total, usuario: $userIdLong")
+        ordersViewModel.addOrder(userIdLong, items, total)
         clearCart()
     }
 }

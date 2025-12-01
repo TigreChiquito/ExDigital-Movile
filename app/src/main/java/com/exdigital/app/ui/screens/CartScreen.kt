@@ -1,5 +1,6 @@
 package com.exdigital.app.ui.screens
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -73,6 +74,10 @@ fun CartScreen(
     val cart by cartViewModel.cart.collectAsState()
     val cartItems by cartViewModel.cartItems.collectAsState()
     val currentUser by authViewModel.currentUser.collectAsState()
+
+    // Log para debugging
+    Log.d("CartScreen", "🛒 Usuario actual: ${currentUser?.email}, ID: ${currentUser?.id}")
+    Log.d("CartScreen", "🛒 Items en carrito: ${cartItems.size}, Total: ${cart.total}")
 
     Scaffold(
         topBar = {
@@ -188,11 +193,25 @@ fun CartScreen(
                     shipping = 0.0,
                     total = cart.total,
                     onCheckout = {
-                        currentUser?.id?.let { userId ->
+                        val userId = currentUser?.id
+                        Log.d("CartScreen", "🛒 Botón Checkout presionado")
+                        Log.d("CartScreen", "🛒 Usuario ID: $userId")
+                        Log.d("CartScreen", "🛒 Items: ${cartItems.size}")
+
+                        if (userId.isNullOrBlank()) {
+                            Log.e("CartScreen", "❌ Error: Usuario no está logueado o no tiene ID")
+                        } else if (cartItems.isEmpty()) {
+                            Log.e("CartScreen", "❌ Error: Carrito vacío")
+                        } else {
+                            Log.d("CartScreen", "✅ Llamando checkout con userId: $userId")
                             cartViewModel.checkout(userId, ordersViewModel)
-                            navController.navigate(Screen.Orders.route) {
-                                popUpTo(Screen.Home.route)
-                            }
+
+                            // Dar tiempo para que se procese el checkout
+                            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                                navController.navigate(Screen.Orders.route) {
+                                    popUpTo(Screen.Home.route)
+                                }
+                            }, 500)
                         }
                     },
                     onClearCart = {

@@ -296,14 +296,15 @@ fun RegisterScreen(
                     } else if (password != confirmPassword) {
                         errorMessage = "Las contraseñas no coinciden"
                     } else {
-                        val success = authViewModel.register(email, password, name, phone)
-                        if (success) {
-                            successMessage = "Cuenta creada correctamente"
-                            navController.navigate(Screen.Login.route) {
-                                popUpTo(Screen.Register.route) { inclusive = true }
+                        authViewModel.register(email, password, name, phone) { success, message ->
+                            if (success) {
+                                successMessage = message ?: "Cuenta creada correctamente"
+                                navController.navigate(Screen.Home.route) {
+                                    popUpTo(Screen.Register.route) { inclusive = true }
+                                }
+                            } else {
+                                errorMessage = message ?: "Error al crear la cuenta"
                             }
-                        } else {
-                            errorMessage = "Datos inválidos o usuario ya registrado"
                         }
                     }
                 },

@@ -177,7 +177,7 @@ fun OrderCard(order: Order, isAdmin: Boolean, onClick: () -> Unit) {
                     if (isAdmin) {
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Usuario: ${order.userId}",
+                            text = "Cliente: ${order.userName}",
                             fontSize = 12.sp,
                             color = TealAccent
                         )

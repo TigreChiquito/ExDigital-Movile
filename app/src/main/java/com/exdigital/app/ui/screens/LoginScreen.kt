@@ -205,14 +205,15 @@ fun LoginScreen(
                     if (email.isEmpty() || password.isEmpty()) {
                         errorMessage = "Por favor completa todos los campos"
                     } else {
-                        val success = authViewModel.login(email, password)
-                        if (success) {
-                            successMessage = "Sesión iniciada correctamente"
-                            navController.navigate(Screen.Home.route) {
-                                popUpTo(Screen.Login.route) { inclusive = true }
+                        authViewModel.login(email, password) { success, message ->
+                            if (success) {
+                                successMessage = message ?: "Sesión iniciada correctamente"
+                                navController.navigate(Screen.Home.route) {
+                                    popUpTo(Screen.Login.route) { inclusive = true }
+                                }
+                            } else {
+                                errorMessage = message ?: "Error al iniciar sesión"
                             }
-                        } else {
-                            errorMessage = "Correo o contraseña inválidos o usuario no registrado"
                         }
                     }
                 },
